@@ -217,7 +217,7 @@ plot_data(generated_data, title='Generated Data')
 By training the GAN on historical OHLC data, the generator learns to create realistic price movements. This can be visually confirmed by plotting the real and generated OHLC data, showing how closely the synthetic data mirrors actual market conditions.
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/EminnM/gan-trading/blob/main/LICENSE) file for details.
 
 
 
