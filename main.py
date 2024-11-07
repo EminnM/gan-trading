@@ -3,12 +3,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import mplfinance as mpf
-import torch.nn.functional as F  
+import torch.nn.functional as F 
+import os 
 
 # Set the device to GPU if available, otherwise fallback to CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-data_path = r"C:\Users\TKA\Desktop\ai\data\ohlc\mtf\y_final_1.pt"
+data_path = r"/content/y_final_1.pt"
 data = torch.load(data_path)  
 
 data = data[:, :100, :]  
@@ -45,27 +46,64 @@ class Generator(nn.Module):
         return x
 
 
+# class Discriminator(nn.Module):
+#     def __init__(self, seq_length=100, feature_size=4):
+#         super(Discriminator, self).__init__()
+#         self.conv1 = nn.Conv1d(in_channels=feature_size, out_channels=64, kernel_size=3, stride=1, padding=1)
+#         self.conv2 = nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1)
+#         self.gru = nn.GRU(input_size=128, hidden_size=512, num_layers=2, batch_first=True)
+#         self.fc = nn.Linear(512, 1)
+#         self.dropout = nn.Dropout(0.3)
+        
+#     def forward(self, x):
+#         x = x.permute(0, 2, 1)  # Reshape to (batch, feature_size, seq_length) for Conv1d
+#         x = F.leaky_relu(self.conv1(x))
+#         x = F.leaky_relu(self.conv2(x))
+#         x = x.permute(0, 2, 1)  # Reshape back to (batch, seq_length, conv_out)
+#         x, _ = self.gru(x)
+#         x = x[:, -1, :]  # Use the last GRU output
+#         x = self.dropout(x)
+#         x = self.fc(x)
+#         return torch.sigmoid(x)
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 class Discriminator(nn.Module):
     def __init__(self, seq_length=100, feature_size=4):
         super(Discriminator, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=feature_size, out_channels=64, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1)
-        self.gru = nn.GRU(input_size=128, hidden_size=512, num_layers=2, batch_first=True)
-        self.fc = nn.Linear(512, 1)
+        
+        # Flatten input sequence of features
+        self.flatten_size = seq_length * feature_size
+        
+        # Fully connected layers
+        self.fc1 = nn.Linear(self.flatten_size, 1024)
+        self.fc2 = nn.Linear(1024, 512)
+        self.fc3 = nn.Linear(512, 256)
+        self.fc4 = nn.Linear(256, 1)
+        
+        # Dropout layers for regularization
         self.dropout = nn.Dropout(0.3)
         
     def forward(self, x):
-        x = x.permute(0, 2, 1)  # Reshape to (batch, feature_size, seq_length) for Conv1d
-        x = F.leaky_relu(self.conv1(x))
-        x = F.leaky_relu(self.conv2(x))
-        x = x.permute(0, 2, 1)  # Reshape back to (batch, seq_length, conv_out)
-        x, _ = self.gru(x)
-        x = x[:, -1, :]  # Use the last GRU output
-        x = self.dropout(x)
-        x = self.fc(x)
+        # Flatten the input to feed into fully connected layers
+        x = x.view(x.size(0), -1)  # Flatten to (batch, seq_length * feature_size)
+        
+        # Pass through fully connected layers with dropout and Leaky ReLU activations
+        x = self.dropout(F.leaky_relu(self.fc1(x)))
+        x = self.dropout(F.leaky_relu(self.fc2(x)))
+        x = self.dropout(F.leaky_relu(self.fc3(x)))
+        
+        # Final output layer with sigmoid
+        x = self.fc4(x)
         return torch.sigmoid(x)
+
+
 
 
 # Move models to GPU
@@ -83,6 +121,10 @@ num_epochs = 10000000
 batch_size = 512
 sample_interval = 1000
 
+base_dir = rf'/content/gan'
+run_number = len([d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]) + 1
+run_dir = os.path.join(base_dir, f'run_{run_number}')
+os.makedirs(run_dir, exist_ok=True)
 for epoch in range(num_epochs):
     # Move the data batch to GPU
     real_data = data[torch.randint(0, data.size(0), (batch_size,))]
@@ -112,7 +154,7 @@ for epoch in range(num_epochs):
     g_loss.backward()
     optimizer_g.step()
 
-    if epoch % (sample_interval // 20) == 0:
+    if epoch % (sample_interval) == 0:
         # Print losses
         print(f"Epoch [{epoch}/{num_epochs}], D Loss: {d_loss.item()}, G Loss: {g_loss.item()}")
 
@@ -134,6 +176,8 @@ for epoch in range(num_epochs):
         plot_data(real_data, title='Real Data')
         plot_data(fake_data, title='Fake Data (Generated)')
 
-# Save model states
-torch.save(generator.state_dict(), "generator.pth")
-torch.save(discriminator.state_dict(), "discriminator.pth")
+        model_path_generator = os.path.join(run_dir, f'generator_epoch{epoch}_loss{g_loss.item()}.pth')
+        model_path_discriminator = os.path.join(run_dir, f'discriminator_epoch{epoch}_loss{d_loss.item()}.pth')
+        
+        torch.save(generator.state_dict(), model_path_generator)
+        torch.save(discriminator.state_dict(), model_path_discriminator)
