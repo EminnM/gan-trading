@@ -51,7 +51,7 @@ Example: y_final_1.pt containing OHLC data in the shape [batch_size, seq_length,
 Set the data path:
 
 Update the data_path variable in the script to point to the location of your .pt file containing the training data.
-Model Details
+## Model Details
 Generator
 The generator model takes random noise (with shape [batch_size, noise_dim]) and generates sequences of OHLC data. The network architecture consists of:
 
@@ -111,7 +111,7 @@ class Discriminator(nn.Module):
         return torch.sigmoid(x)
 ```
 
-Training Setup
+## Training Setup
 Loss function: Binary Cross-Entropy (BCELoss).
 Optimizer: Adam optimizer with learning rate of 0.0002 and beta1=0.5.
 Device: The model runs on a GPU if available, otherwise defaults to CPU.
@@ -196,7 +196,7 @@ torch.save(generator.state_dict(), "generator.pth")
 torch.save(discriminator.state_dict(), "discriminator.pth")
 ```
 
-Usage
+## Usage
 Once the model is trained, you can use the trained generator to generate new synthetic OHLC data. To generate data:
 
 ```python
@@ -213,10 +213,10 @@ generated_data = generator(noise)
 plot_data(generated_data, title='Generated Data')
 ```
 
-Results
+## Results
 By training the GAN on historical OHLC data, the generator learns to create realistic price movements. This can be visually confirmed by plotting the real and generated OHLC data, showing how closely the synthetic data mirrors actual market conditions.
 
-License
+## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 
